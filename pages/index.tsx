@@ -4,7 +4,6 @@ import type { NextPage } from "next";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { db } from "../database.config";
 
 const Home: NextPage = () => {
   const router = useRouter();
@@ -16,21 +15,21 @@ const Home: NextPage = () => {
       const formData = new FormData(e.currentTarget);
       const data = Object.fromEntries(formData.entries());
 
-      const user = await db.users
-        .where("email")
-        .equals(data.email.toString())
-        .first();
-      if (user) {
-        if (user.password === data.password.toString()) {
-          e.currentTarget.reset();
-          console.log("User logged in with id: ", user.id);
-          alert("Usuario logeado con el id: " + user.id);
-          router.push("/welcome");
-        } else {
-          setMessage("Contraseña incorrecta");
-        }
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      const result = await response.json();
+      console.log("result", result);
+
+      if (result.status === 202) {
+        alert("Usuario logeado con el id: " + result.data.id);
+        router.push("/welcome");
       } else {
-        setMessage("Usuario no encontrado");
+        setMessage(result.message);
       }
     } catch (error) {
       console.log(error);
@@ -77,9 +76,9 @@ const Home: NextPage = () => {
                 xmlns="http://www.w3.org/2000/svg"
               >
                 <path
-                  fill-rule="evenodd"
+                  fillRule="evenodd"
                   d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                  clip-rule="evenodd"
+                  clipRule="evenodd"
                 ></path>
               </svg>
               <span className="sr-only">Info</span>
@@ -131,10 +130,7 @@ const Home: NextPage = () => {
 
           <p className="text-right">
             <Link href="/create-user">
-              <a
-                className="text-blue-600 text-sm font-light hover:underline"
-                href="https://www.kindacode.com"
-              >
+              <a className="text-blue-600 text-sm font-light hover:underline">
                 Olvido la contraseña?
               </a>
             </Link>

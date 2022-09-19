@@ -1,10 +1,17 @@
-import { useLiveQuery } from "dexie-react-hooks";
+import { useEffect, useState } from "react";
+
 import type { NextPage } from "next";
 import Head from "next/head";
-import { db } from "../database.config";
+import Link from "next/link";
+
+interface IUser {
+  id: number;
+  email: string;
+  password: string;
+}
 
 const CreateUser: NextPage = () => {
-  const users = useLiveQuery(() => db.users.toArray());
+  const [users, setUsers] = useState<IUser[]>([]);
 
   const createUser = async (e: React.FormEvent<HTMLFormElement>) => {
     try {
@@ -13,13 +20,25 @@ const CreateUser: NextPage = () => {
       const data = Object.fromEntries(formData.entries());
       e.currentTarget.reset();
 
-      const id = await db.users.add({
-        email: data.email.toString(),
-        password: data.password.toString(),
+      const response = await fetch("/api/create-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: data.email.toString(),
+          password: data.password.toString(),
+        }),
       });
+      const result = await response.json();
+      console.log("result", result);
 
-      console.log("User created with id: ", id);
-      alert("Ususaio creado con el id: " + id);
+      if (result.status === 202) {
+        alert("Usuario creado con el id: " + result.data.id);
+        setUsers([...users, result.data]);
+      } else {
+        alert(result.message);
+      }
     } catch (error) {
       console.log(error);
       alert("Error al crear el usuario");
@@ -32,9 +51,22 @@ const CreateUser: NextPage = () => {
         //confirmar
         const confirm = window.confirm("¿Estas seguro de eliminar el usuario?");
         if (confirm) {
-          await db.users.delete(id);
-          alert("Usuario eliminado con el id: " + id);
-          console.log("User deleted with id: ", id);
+          const response = await fetch("/api/delete-user", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ id }),
+          });
+          const result = await response.json();
+          console.log("result", result);
+
+          if (result.status === 202) {
+            alert("Usuario eliminado con el id: " + id);
+            setUsers(users.filter((user) => user.id !== id));
+          } else {
+            alert(result.message);
+          }
         }
       }
     } catch (error) {
@@ -42,6 +74,25 @@ const CreateUser: NextPage = () => {
       console.log(error);
     }
   };
+
+  const getUsers = async () => {
+    try {
+      const response = await fetch("/api/users");
+      const result = await response.json();
+      console.log("result", result);
+      if (result.status === 202) {
+        setUsers(result.data);
+      } else {
+        alert(result.message);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  useEffect(() => {
+    getUsers();
+  }, []);
 
   return (
     <div>
@@ -52,8 +103,11 @@ const CreateUser: NextPage = () => {
       </Head>
 
       <div className="w-screen h-screen flex flex-col bg-white">
-        <header className="w-full h-20 bg-orange-600 flex justify-center items-center">
+        <header className="relative w-full h-20 bg-orange-600 flex justify-center items-center">
           <h1 className="text-3xl text-white">The Safest.net</h1>
+          <button className="absolute top-2 right-2 ml-4 text-white">
+            <Link href="/">Cerrar sesión</Link>
+          </button>
         </header>
 
         <div className="flex justify-between gap-8 max-w-screen-2xl mx-auto p-4 overflow-hidden">
